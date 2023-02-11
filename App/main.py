@@ -26,28 +26,6 @@ from pose import Pose
 from model import TensorFlowModel
 from android_permissions import AndroidPermissions
 
-'''if platform == 'android':
-    from jnius import autoclass
-    from android.runnable import run_on_ui_thread
-    from android import mActivity
-    View = autoclass('android.view.View')
-
-    @run_on_ui_thread
-    def hide_landscape_status_bar(instance, width, height):
-        # width,height gives false layout events, on pinch/spread 
-        # so use Window.width and Window.height
-        if Window.width > Window.height: 
-            # Hide status bar
-            option = View.SYSTEM_UI_FLAG_FULLSCREEN
-        else:
-            # Show status bar 
-            option = View.SYSTEM_UI_FLAG_VISIBLE
-        mActivity.getWindow().getDecorView().setSystemUiVisibility(option)
-elif platform != 'ios':
-    # Dispose of that nasty red dot, required for gestures4kivy.
-    from kivy.config import Config 
-    Config.set('input', 'mouse', 'mouse, disable_multitouch')'''
-
 Builder.load_string("""
 <AppLayout>:
     video_preview: self.ids.camera
@@ -59,18 +37,17 @@ Builder.load_string("""
         id: camera
         orientation: 'same'
 
-    MDBoxLayout:
-        MDBottomAppBar:
-            MDTopAppBar:
-                id: bottom_bar
-                title: "Calisthenics AI"
-                icon: "video"
-                on_action_button: app.toggle_video()
-                icon_color: (1, 1, 1, 1)
-                type: "bottom"
-                left_action_items: [["camera-flip-outline", lambda x: app.switch_camera()]]
-                right_action_items: [["gymnastics", lambda x: app._camera.handstand()], ["weight-lifter", lambda x: app._camera.muscleup()], ["dumbbell", lambda x: app._camera.planche()]]
-                mode: "center"
+    MDBottomAppBar:
+        MDTopAppBar:
+            id: bottom_bar
+            title: "Calisthenics AI"
+            icon: "video"
+            on_action_button: app.toggle_video()
+            icon_color: (1, 1, 1, 1)
+            mode: "free-center"
+            type: "bottom"
+            left_action_items: [["camera-flip-outline", lambda x: app.switch_camera()]]
+            right_action_items: [["gymnastics", lambda x: app._camera.handstand()], ["weight-lifter", lambda x: app._camera.muscleup()], ["dumbbell", lambda x: app._camera.planche()]]
 
     RelativeLayout:
         MDFillRoundFlatIconButton:
@@ -183,7 +160,7 @@ class VideoPreview(Preview):
     def process_frame(self, frame):
         
         # Flip Frame (Recorded with Front Facing Camera)
-        frame = cv2.flip(frame, 1)
+        #frame = cv2.flip(frame, 1)
 
         # Isolate People from Frame
         person, image_width, image_height = self.pose_detector.detect(frame)
@@ -264,10 +241,8 @@ class MyApp(MDApp):
     def build(self):
         self.theme_cls.theme_style = "Dark"
         self.theme_cls.primary_palette = "Orange"
+        self.theme_cls.material_style = "M2"
         self.title = "Calisthenics AI Personal Trainer"
-
-        '''if platform == 'android':
-            Window.bind(on_resize=hide_landscape_status_bar)'''
 
         self.layout = AppLayout()
         self._camera = self.layout.video_preview
@@ -285,8 +260,8 @@ class MyApp(MDApp):
     def start_app(self):
         self.dont_gc = None
         Clock.schedule_once(self.connect_camera)
-        if platform == 'android':
-            self._camera.zoom_delta(delta_scale = 0.5)
+        '''if platform == 'android':
+            self._camera.zoom_delta(delta_scale = 0.5)'''
 
     def connect_camera(self, dt):
         self._camera.connect_camera(analyze_pixels_resolution = 720, 
