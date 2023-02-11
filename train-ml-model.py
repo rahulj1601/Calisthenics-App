@@ -1,5 +1,4 @@
-# Importing Modules
-
+# Module Imports
 import csv
 import cv2
 import itertools
@@ -14,7 +13,7 @@ import time
 from matplotlib import pyplot as plt
 from matplotlib.collections import LineCollection
 
-import tensorflow as tf
+import tensorflow as tf 
 import tensorflow_hub as hub
 from tensorflow import keras
 
@@ -28,15 +27,13 @@ import shutil
 import importlib.util
 
 # Movenet Thunder and Python Pose Estimation
-pose_sample_rpi_path = os.path.join(os.getcwd(), './TF-Movenet/examples/lite/examples/pose_estimation/raspberry_pi')
-sys.path.append(pose_sample_rpi_path)
+sys.path.append('./TF-Movenet/examples/lite/examples/pose_estimation/raspberry_pi')
 
 import utils
 from data import BodyPart
 from ml import Movenet
 
-# Choosing movenet thunder because it is more accurate for training the ml model
-movenet = Movenet('movenet_thunder')
+movenet = Movenet('./TF-Movenet/movenet_thunder')
 
 # Find Person Within Input Image
 def detect(input_tensor, inference_count=3):
@@ -52,6 +49,24 @@ def detect(input_tensor, inference_count=3):
 # Draw Pose Estimation on Image
 def draw_prediction_on_image(image, person, crop_region=None, close_figure=True, keep_input_size=False):
     image_np = utils.visualize(image, [person])
+
+    height, width, channel = image.shape
+    aspect_ratio = float(width) / height
+    fig, ax = plt.subplots(figsize=(12 * aspect_ratio, 12))
+    im = ax.imshow(image_np)
+
+    if close_figure:
+        plt.close(fig)
+
+    if not keep_input_size:
+        image_np = utils.keep_aspect_ratio_resizer(image_np, (512, 512))
+
+    return image_np
+
+# Draw Pose Estimation on Black Screen
+def draw_prediction_on_screen(image, person, crop_region=None, close_figure=True, keep_input_size=False):
+    white_img = np.ones((image.shape[0], image.shape[1], 3), dtype=np.uint8)
+    image_np = utils.visualize(white_img, [person])
 
     height, width, channel = image.shape
     aspect_ratio = float(width) / height
@@ -244,6 +259,45 @@ def split_into_train_test(images_origin, images_dest, test_split):
 
     print(f'Your split dataset is in "{images_dest}"')
 
+# TODO: Set/Check Path/File Variables Before Running
+DATASET_IN = "./Input/Handstand/"
+DATASET_OUT = "./Input/Split-Handstand/"
+OUTPUT_DIR = "./TF-Models/Handstand/Data/"
+CLASSIFIER = "./TF-Models/Handstand/Handstand-Classifier.tflite"
+LABELS = "./TF-Models/Handstand/Handstand-Labels.txt"
+
+# Splitting the Dataset
+dataset_in = DATASET_IN
+dataset_out = DATASET_OUT
+split_into_train_test(dataset_in, dataset_out, test_split=0.2)
+IMAGES_ROOT = dataset_out
+
+output_dir = OUTPUT_DIR
+
+# Preprocess Train Folder
+images_in_train_folder = os.path.join(IMAGES_ROOT, 'train')
+images_out_train_folder = output_dir + '/images_out_train'
+csvs_out_train_path = output_dir + '/train_data.csv'
+
+preprocessor = MoveNetPreprocessor(
+    images_in_folder=images_in_train_folder,
+    images_out_folder=images_out_train_folder,
+    csvs_out_path=csvs_out_train_path,
+)
+preprocessor.process(per_pose_class_limit=None)
+
+# Preprocess Test Folder
+images_in_test_folder = os.path.join(IMAGES_ROOT, 'test')
+images_out_test_folder = output_dir + '/images_out_test'
+csvs_out_test_path = output_dir + '/test_data.csv'
+
+preprocessor = MoveNetPreprocessor(
+    images_in_folder=images_in_test_folder,
+    images_out_folder=images_out_test_folder,
+    csvs_out_path=csvs_out_test_path,
+)
+preprocessor.process(per_pose_class_limit=None)
+
 # Loads a CSV Created by MoveNetPreprocessor
 def load_pose_landmarks(csv_path):
     # Load the CSV file
@@ -264,6 +318,15 @@ def load_pose_landmarks(csv_path):
     y = keras.utils.to_categorical(y)
 
     return X, y, classes, dataframe
+
+# Load the train data
+X, y, class_names, _ = load_pose_landmarks(csvs_out_train_path)
+
+# Split training data (X, y) into (X_train, y_train) and (X_val, y_val)
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.15)
+
+# Load the test data
+X_test, y_test, _, df_test = load_pose_landmarks(csvs_out_test_path)
 
 # Calculates Center Point of Two Given Landmarks
 def get_center_point(landmarks, left_bodypart, right_bodypart):
@@ -337,58 +400,6 @@ def landmarks_to_embedding(landmarks_and_scores):
 
   return embedding
 
-
-### START OF CODE ###
-
-
-
-# Splitting the Dataset
-dataset_in = './input-images/Handstand/'
-dataset_out = './input-images/Split-Handstand/'
-split_into_train_test(dataset_in, dataset_out, test_split=0.2)
-IMAGES_ROOT = dataset_out
-
-output_dir = "output-data-ml-model"
-
-# Preprocess Train Folder
-images_in_train_folder = os.path.join(IMAGES_ROOT, 'train')
-images_out_train_folder = output_dir + '/poses_images_out_train'
-csvs_out_train_path = output_dir + '/train_data.csv'
-
-preprocessor = MoveNetPreprocessor(
-    images_in_folder=images_in_train_folder,
-    images_out_folder=images_out_train_folder,
-    csvs_out_path=csvs_out_train_path,
-)
-preprocessor.process(per_pose_class_limit=None)
-
-# Preprocess Test Folder
-images_in_test_folder = os.path.join(IMAGES_ROOT, 'test')
-images_out_test_folder = output_dir + '/poses_images_out_test'
-csvs_out_test_path = output_dir + '/test_data.csv'
-
-preprocessor = MoveNetPreprocessor(
-    images_in_folder=images_in_test_folder,
-    images_out_folder=images_out_test_folder,
-    csvs_out_path=csvs_out_test_path,
-)
-preprocessor.process(per_pose_class_limit=None)
-
-
-
-# Testing Input Image Against the Model
-csvs_out_train_path = 'output-data-ml-model/train_data.csv'
-csvs_out_test_path = 'output-data-ml-model/test_data.csv'
-
-# Load the train data
-X, y, class_names, _ = load_pose_landmarks(csvs_out_train_path)
-
-# Split training data (X, y) into (X_train, y_train) and (X_val, y_val)
-X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.15)
-
-# Load the test data
-X_test, y_test, _, df_test = load_pose_landmarks(csvs_out_test_path)
-
 # Define the model
 inputs = tf.keras.Input(shape=(51))
 embedding = landmarks_to_embedding(inputs)
@@ -409,7 +420,7 @@ model.compile(
 )
 
 # Add a checkpoint callback to store the checkpoint that has the highest validation accuracy.
-checkpoint_path = "weights.best.hdf5"
+checkpoint_path = "TF-Models/weights.best.hdf5"
 checkpoint = keras.callbacks.ModelCheckpoint(checkpoint_path,
                              monitor='val_accuracy',
                              verbose=1,
@@ -444,28 +455,24 @@ y_pred = model.predict(X_test)
 y_pred_label = [class_names[i] for i in np.argmax(y_pred, axis=1)]
 y_true_label = [class_names[i] for i in np.argmax(y_test, axis=1)]
 
-
-
 # Print the classification report
 print('\nClassification Report:\n', classification_report(y_true_label, y_pred_label))
 
-
-
+# Convert pose classification model to TensorFlow Lite
 converter = tf.lite.TFLiteConverter.from_keras_model(model)
 converter.optimizations = [tf.lite.Optimize.DEFAULT]
 tflite_model = converter.convert()
 
 print('Model size: %dKB' % (len(tflite_model) / 1024))
 
-with open('pose_classifier.tflite', 'wb') as f:
+with open(CLASSIFIER, 'wb') as f:
   f.write(tflite_model)
 
-with open('pose_labels.txt', 'w') as f:
+with open(LABELS, 'w') as f:
   f.write('\n'.join(class_names))
 
-
-
 def evaluate_model(interpreter, X, y_true):
+  """Evaluates the given TFLite model and return its accuracy."""
   input_index = interpreter.get_input_details()[0]["index"]
   output_index = interpreter.get_output_details()[0]["index"]
 
@@ -493,4 +500,5 @@ def evaluate_model(interpreter, X, y_true):
 # Evaluate the accuracy of the converted TFLite model
 classifier_interpreter = tf.lite.Interpreter(model_content=tflite_model)
 classifier_interpreter.allocate_tensors()
-print('Accuracy of TFLite model: %s' % evaluate_model(classifier_interpreter, X_test, y_test))
+print('Accuracy of TFLite model: %s' %
+      evaluate_model(classifier_interpreter, X_test, y_test))

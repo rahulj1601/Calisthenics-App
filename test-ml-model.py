@@ -3,10 +3,10 @@ import time
 import cv2
 import numpy as np
 
-sys.path.append('TF-Movenet/movenet-models/examples/lite/examples/pose_estimation/raspberry_pi')
+sys.path.append('TF-Movenet/examples/lite/examples/pose_estimation/raspberry_pi')
 
-from ml import Classifier
 from ml import Movenet
+from ml import Classifier
 import utils
 
 def run(classification_model, label_file, estimation_model):
@@ -15,10 +15,10 @@ def run(classification_model, label_file, estimation_model):
     pose_detector = Movenet(estimation_model)
 
     # Video Capture
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture("/Users/rahul/Documents/CS310-App/input/Tested-Input/Handstand-Test-Videos/3.mp4")
 
     # Score Threshold Per Keypoint
-    keypoint_detection_threshold_for_classifier = 0.0
+    keypoint_detection_threshold_for_classifier = 0.1
 
     # Classification Model
     classifier = Classifier(classification_model, label_file)
@@ -39,31 +39,28 @@ def run(classification_model, label_file, estimation_model):
 
         min_score = min([keypoint.score for keypoint in person.keypoints])
 
-        keypoint_color = (255,255,255)
-        edge_color = (255,255,255)
+        color = (255, 255, 255)
 
         # Error Message
         if min_score < keypoint_detection_threshold_for_classifier:
             print("Make sure the person is fully visible in the camera.")
-        
+
         # Pose Classification
         else:
             prob_list = classifier.classify_pose(person)
+            print(prob_list)
 
             top_class_name = prob_list[0].label
             print(top_class_name)
 
             if top_class_name == "Average":
-                keypoint_color = (0,155,255)
-                edge_color = (0,155,255)
+                color = (0, 155, 255)
             elif top_class_name == "Good":
-                keypoint_color = (0,255,0)
-                edge_color = (0,255,0)
+                color = (0, 255, 0)
             elif top_class_name == "Bad":
-                keypoint_color = (0,0,255)
-                edge_color = (0,0,255)
+                color = (0, 0, 255)
 
-        frame = utils.visualize(frame, list_persons, keypoint_color, edge_color)
+        frame = utils.visualize(frame, list_persons, color)
 
         # Stop the program if the ESC key is pressed.
         if cv2.waitKey(1) == 27:
@@ -78,9 +75,9 @@ def run(classification_model, label_file, estimation_model):
 
 
 def main():
-    classifier = "pose_classifier"
-    label_file = "pose_labels.txt"
-    estimation_model = "movenet_lightning"
+    classifier = "./TF-Models/Handstand/Handstand-Classifier.tflite"
+    label_file = "./TF-Models/Handstand/Handstand-Labels.txt"
+    estimation_model = "./TF-Movenet/movenet_lightning.tflite"
 
     run(classifier, label_file, estimation_model)
 
