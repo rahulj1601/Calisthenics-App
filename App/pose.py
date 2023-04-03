@@ -206,6 +206,89 @@ class Pose:
 
         return keypoints_with_scores
 
+    def get_center_point(self, landmarks, left_bodypart, right_bodypart):
+        left = landmarks[:, left_bodypart.value]
+        right = landmarks[:, right_bodypart.value]
+        center = left * 0.5 + right * 0.5
+        return center
+
+    def get_pose_size(self, landmarks, torso_size_multiplier=2.5):
+        """Calculates pose size.
+        It is the maximum of two values:
+        * Torso size multiplied by `torso_size_multiplier`
+        * Maximum distance from pose center to any pose landmark
+        """
+        # Hips center
+        hips_center = self.get_center_point(landmarks, BodyPart.LEFT_HIP, BodyPart.RIGHT_HIP)
+
+        # Shoulders center
+        shoulders_center = self.get_center_point(landmarks, BodyPart.LEFT_SHOULDER, BodyPart.RIGHT_SHOULDER)
+
+        # Torso size as the minimum body size
+        torso_size = np.linalg.norm(shoulders_center - hips_center)
+
+        # Pose center
+        pose_center_new = self.get_center_point(landmarks, BodyPart.LEFT_HIP, BodyPart.RIGHT_HIP)
+        pose_center_new = np.expand_dims(pose_center_new, axis=1)
+
+        # Broadcast the pose center to the same size as the landmark vector to perform substraction
+        pose_center_new = np.broadcast_to(pose_center_new, (landmarks.shape[0], 17, 2))
+
+        # Dist to pose center
+        d = landmarks - pose_center_new
+        dist_to_pose_center = d[0]
+
+        # Max dist to pose center
+        max_dist = np.max(np.linalg.norm(dist_to_pose_center, axis=1))
+
+        # Normalize scale
+        pose_size = max(torso_size * torso_size_multiplier, max_dist)
+        return pose_size
+
+    def normalize_pose_landmarks(self, landmarks):
+        """Normalizes the landmarks translation by moving the pose center to (0,0) and
+        scaling it to a constant pose size.
+        """
+
+        # Move landmarks so that the pose center becomes (0,0)
+        pose_center = self.get_center_point(landmarks, BodyPart.LEFT_HIP, BodyPart.RIGHT_HIP)
+        pose_center = np.expand_dims(pose_center, axis=1)
+        
+        # Broadcast the pose center to the same size as the landmark vector to perform substraction
+        pose_center = np.broadcast_to(pose_center, (landmarks.shape[0], 17, 2))
+        landmarks = landmarks - pose_center
+
+        # Scale the landmarks to a constant pose size
+        pose_size = self.get_pose_size(landmarks)
+        landmarks /= pose_size
+
+        return landmarks
+
+    def landmarks_to_embedding(self, landmarks_and_scores):
+        """Converts the input landmarks into a pose embedding."""
+        # Reshape the flat input into a matrix with shape=(17, 3)
+        reshaped_inputs = np.reshape(landmarks_and_scores, (17, 3))
+
+        # Normalize landmarks 2D
+        landmarks = self.normalize_pose_landmarks(np.array([reshaped_inputs[:, :2]]))
+        
+        # Flatten the normalized landmark coordinates into a vector
+        embedding = landmarks.flatten()
+        return embedding
+
+    def normalize_person(self, keypoints_with_scores):
+        
+        landmarks = [[x, y, score] for y, x, score in keypoints_with_scores]
+        landmarks = [item for sublist in landmarks for item in sublist]
+
+        landmarks_array = np.array(landmarks)
+        embedding = self.landmarks_to_embedding(landmarks_array).reshape(34)
+
+        input_tensor = np.array(embedding).flatten().astype(np.float32)
+        input_tensor = np.expand_dims(input_tensor, axis=0)
+
+        return input_tensor
+
     def detect(self, input_image):
         
         image_height, image_width, _ = input_image.shape
@@ -222,4 +305,6 @@ class Pose:
         self.crop_region = self.determine_crop_region(keypoint_with_scores,
                                                         image_height, image_width)
 
-        return [keypoint_with_scores, image_width, image_height]
+        input_tensor = self.normalize_person(keypoint_with_scores)
+
+        return [input_tensor, keypoint_with_scores, image_width, image_height]

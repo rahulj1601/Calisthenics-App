@@ -44,7 +44,7 @@ class AndroidPermissions:
             # Customize run time permissions for the app here
             #################################################
             self.permissions = [Permission.CAMERA,
-                                Permission.RECORD_AUDIO, 
+                                Permission.RECORD_AUDIO,
                                 Permission.WRITE_EXTERNAL_STORAGE, 
                                 Permission.READ_EXTERNAL_STORAGE]
             #################################################            

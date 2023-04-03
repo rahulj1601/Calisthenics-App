@@ -14,36 +14,50 @@ if platform == 'android':
     ByteBuffer = autoclass('java.nio.ByteBuffer')
 
     class TensorFlowModel():
-        def load(self, model_filename, num_threads=None):
+        def load(self, model_filename, num_threads=None, label_file=None):
             model = File(model_filename)
             options = InterpreterOptions()
             if num_threads is not None:
                 options.setNumThreads(num_threads)
             self.interpreter = Interpreter(model, options)
-            self.allocate_tensors()
-
-        def allocate_tensors(self):
             self.interpreter.allocateTensors()
+
             self.input_shape = self.interpreter.getInputTensor(0).shape()
             self.output_shape = self.interpreter.getOutputTensor(0).shape()
             self.output_type = self.interpreter.getOutputTensor(0).dataType()
 
-        def get_input_shape(self):
-            return self.input_shape
+            if label_file==None:
+                self.input_height = self.input_shape[1]
+                self.input_width = self.input_shape[2]
 
-        def resize_input(self, shape):
-            if self.input_shape != shape:
-                self.interpreter.resizeInput(0, shape)
-                self.allocate_tensors()
+            if label_file:
+                self.pose_class_names = self.load_labels(label_file)
+
+        def load_labels(self, label_path):
+            with open(label_path, 'r') as f:
+                return [line.strip() for _, line in enumerate(f.readlines())]
+
+        def get_crop_size(self):
+            return (self.input_height, self.input_width)
+
+        def classify_pose(self, input_tensor):
+            output = self.pred(input_tensor)
+            output = np.squeeze(output, axis=0)
+
+            # Sort output by probability descending.
+            prob_descending = sorted(range(len(output)), key=lambda k: output[k], reverse=True)
+            prob_list = [
+                [self.pose_class_names[idx], output[idx]]
+                for idx in prob_descending
+            ]
+
+            return prob_list
 
         def pred(self, x):
-            # assumes one input and one output for now
             input = ByteBuffer.wrap(x.tobytes())
-            output = TensorBuffer.createFixedSize(self.output_shape,
-                                                  self.output_type)
+            output = TensorBuffer.createFixedSize(self.output_shape, self.output_type)
             self.interpreter.run(input, output.getBuffer().rewind())
-            return np.reshape(np.array(output.getFloatArray()),
-                              self.output_shape)
+            return np.reshape(np.array(output.getFloatArray()), self.output_shape)
 
 elif platform == 'ios':
     from pyobjus import autoclass, objc_arr

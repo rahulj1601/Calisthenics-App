@@ -21,8 +21,8 @@ from ml import Movenet
 import utils
 
 def main():
-    FOLDER_PATH = "/Users/rahul/Downloads/Handstand Images/batch3"
-    END_PATH = "/Users/rahul/Documents/Calisthenics-App/Input/Handstand"
+    FOLDER_PATH = "/Users/rahul/Desktop/TODO-Input/Front Lever"
+    END_PATH = "/Users/rahul/Documents/Calisthenics-App/Input/Front Lever"
     loopImages(FOLDER_PATH, END_PATH)
 
 # Loop through the images in given folder
@@ -53,7 +53,7 @@ def loopImages(folder, path):
                 break
 
         while True:
-            action = input("X/G/A/B/Exit: ").lower()
+            action = input("X/P/G/A/B/Exit: ").lower()
 
             # Next Image
             if action == "x":
@@ -62,7 +62,13 @@ def loopImages(folder, path):
             
             # Put Image in good filepath
             elif action == "g":
-                saveImage(file_path, path + "/Good/")
+                saveImage(file_path, path + "/Good")
+                os.remove(file_path)
+                break
+            
+            # Put Image in perfect filepath
+            elif action == "p":
+                saveImage(file_path, path + "/Perfect")
                 os.remove(file_path)
                 break
 
@@ -93,10 +99,13 @@ def pose_estimation(img):
 # Rotating and Mirroring Image and Saving to Correct Path
 def saveImage(file_path, path):
     # Count files in each directory
-    count = len([x for x in os.listdir(path)]) - 1
+    count = len([x for x in os.listdir(path)])
 
     # Reading the image
     img = cv2.imread(file_path)
+
+    # Resizing image and maintaining aspect ratio
+    #img = image_resize(img, width=500)
 
     # Rotate 2 Degrees
     rotated_left = imutils.rotate(img, angle=2)
@@ -121,6 +130,37 @@ def saveImage(file_path, path):
     cv2.imwrite(path + "/" + str(count) + ".jpeg", mir_rotated_left)
     count+=1
     cv2.imwrite(path + "/" + str(count) + ".jpeg", mir_rotated_right)
+
+def image_resize(image, width = None, height = None, inter = cv2.INTER_AREA):
+    # initialize the dimensions of the image to be resized and
+    # grab the image size
+    dim = None
+    (h, w) = image.shape[:2]
+
+    # if both the width and height are None, then return the
+    # original image
+    if width is None and height is None:
+        return image
+
+    # check to see if the width is None
+    if width is None:
+        # calculate the ratio of the height and construct the
+        # dimensions
+        r = height / float(h)
+        dim = (int(w * r), height)
+
+    # otherwise, the height is None
+    else:
+        # calculate the ratio of the width and construct the
+        # dimensions
+        r = width / float(w)
+        dim = (width, int(h * r))
+
+    # resize the image
+    resized = cv2.resize(image, dim, interpolation = inter)
+
+    # return the resized image
+    return resized
 
 if __name__ == "__main__":
     main()

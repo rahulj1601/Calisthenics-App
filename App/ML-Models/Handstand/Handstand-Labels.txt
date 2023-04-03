@@ -1,3 +1,4 @@
 Average
 Bad
 Good
+Perfect
