@@ -1,1 +1,0 @@
-# Calisthenics Personal Trainer - Kivy Tensorflow OpenCV
