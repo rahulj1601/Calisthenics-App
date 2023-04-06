@@ -5,6 +5,9 @@
 
 ## Description
 What does this project do?
+* Track your form for Handstand, Front Lever and Planche.
+* Import previously recorded videos or record in real-time.
+* Find out whether your form was Bad, Average, Good or Perfect.
 
 ---
 
@@ -30,7 +33,8 @@ What does this project do?
 │   │   ├── pose.py
 │   │   ├── android_permissions.py
 │   │   ├── buildozer.spec
-│   │   ├── requirements.txt
+│   │   ├── app_requirements.txt
+│   │   ├── computer_requirements.txt
 │   ├── Input
 │   │   ├── Front Lever
 │   │   ├── Handstand
@@ -43,15 +47,17 @@ What does this project do?
 │   │   │   ├── Data
 │   │   │   ├── Front Lever-Classifier.tflite
 │   │   │   ├── Front Lever-Labels.txt
+│   │   │   ├── weights.best.hdf5
 │   │   ├── Handstand
 │   │   │   ├── Data
 │   │   │   ├── Handstand-Classifier.tflite
 │   │   │   ├── Handstand-Labels.txt
+│   │   │   ├── weights.best.hdf5
 │   │   ├── Planche
 │   │   │   ├── Data
 │   │   │   ├── Planche-Classifier.tflite
 │   │   │   ├── Planche-Labels.txt
-│   │   ├── weights.best.hdf5
+│   │   │   ├── weights.best.hdf5
 │   ├── TF-Movenet
 │   │   ├── examples
 │   │   ├── movenet_lightning.tflite
@@ -66,9 +72,8 @@ What does this project do?
 
 ## Setup
 
-### Installing dependencies
-*(Please ensure you have `Python 3.9` installed.)*\
-*(This setup has been tested on DCS computers. Therefore, this would be ideal if you wish to run this project. A Linux machine is required for this process. )*
+### Creating Virtual Environments & Installing Dependencies
+*(Please ensure you have `Python 3.9` installed.)*
 
 > Installing buildozer, Cython, virtualenv and python-for-android
 
@@ -80,58 +85,72 @@ pip3.9 install --user python-for-android
 ```
 
 > Run the Follwing Commands to Create an `ml_venv` and Install requirements \
-*(Please note you must be in the `Calisthenics-App` directory.)*
+*(This is required to run the `train-ml-model.py` file successfully.)*
 
 ```bash
 cd Calisthenics-App
 python3.9 -m virtualenv ml_venv
 source ml_venv/bin/activate
-pip3.9 install -r requirements.txt
+pip3.9 install -r app_requirements.txt
+```
+
+> Run the Follwing Commands to Create an `computer_venv` and Install requirements\
+*(This is required to run the application within your computer.)*
+
+```bash
+cd Calisthenics-App/App
+python3.9 -m virtualenv computer_venv
+source computer_venv/bin/activate
+pip3.9 install Cython==0.29.19
+pip3.9 install -r comp_requirements.txt
 ```
 
 > Run the Follwing Commands to Create an `app_venv` and Install requirements\
-*(Please note you must be in the `Calisthenics-App/App` directory.)*
-
-<!-- Combine requirements.txt and test-requirements.txt files -->
+*(This is required to build, package and run the Android mobile application.)*
 
 ```bash
 cd Calisthenics-App/App
 python3.9 -m virtualenv app_venv
 source app_venv/bin/activate
 pip3.9 install Cython==0.29.19
-pip3.9 install -r requirements.txt
+pip3.9 install -r app_requirements.txt
 ```
 
-### Run Machine Learning TensorFlow Training Script
+### Run TensorFlow ML Training Script
+*(Please ensure you have successfully created the `ml_venv` as mentioned above.)*
 
-> Open the Jupyter Notebook called `train-ml-model.ipynb`. Set the kernel to `ml_venv`. Run the notebook by clicking "Run All".
-
-<!-- TODO - Adjust Training Script - user selects variables for paths, delete certain directories before running. Remote model.py and pose.py from TF-Movenet if possible. -->
+1. Open the `train-ml-model.ipynb` Jupyter Notebook within VSCode. 
+1. Set the kernel to `ml_venv`. 
+1. Run the notebook by clicking "Run All".
+1. Note: You may be prompted to install the ipykernel package within VSCode. Click "Install".
 
 ### Run Application on Computer
-
-> Run the Application locally on your computer. \
-*(Please note your computer will need a camera and certain features may not function exactly the same as they would on mobile.)*
+*(This should be possible with any computer including a video-camera, it has been tested to function correctly with a MacBook Pro Intel Core i5 Early 2015.)*
 
 ```bash
 cd Calisthenics-App/App
-source app_venv/bin/activate
+source computer_venv/bin/activate
 python main.py
 ```
 
 ### Run Application on Android
+*(The packaging and building of the Android mobile application has been tested on Warwick DCS computers. Theoretically, any Linux computer should suffice. The APK can be installed from any computer onto any Android mobile device. Please note, the `buildozer android debug` command can take a while to run up to 1hr. You can skip the building and packaging steps if you wish, and go straight to installing the APK onto your Android device.)*
 
 > Building & packaging the Android mobile application
 
 ```bash
 cd Calisthenics-App/App
 source app_venv/bin/activate
+buildozer android clean
 buildozer android debug
 ```
 
-> Installing the APK File \
-*(Please connect your Android mobile device into the computer.)*
+> Installing the APK File
 
+1. Install `adb` on your computer if it is not already installed.
+1. Enable USB debugging on your Android mobile device.
+1. Connect your Android mobile device to the computer.
+1. Finally, run the following command:
 ```bash
 adb install Calisthenics-App/App/bin/cali_ai-0.1-armeabi-v7a_arm64-v8a-debug.apk
 ```
