@@ -1,1 +1,0 @@
-/dcs/20/u2030590/CS310-App/App/.buildozer/android/platform/build-armeabi-v7a_arm64-v8a/build/python-installs/cali_ai/armeabi-v7a/cv2.cpython-39-x86_64-linux-gnu.so

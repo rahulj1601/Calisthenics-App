@@ -125,13 +125,13 @@ deactivate
 ### Run TensorFlow ML Training Script
 *(Please ensure you have successfully created the `ml_venv` as mentioned above.)*
 
-**Method 1**
+**Method 1 - VSCode**
 1. Open the `train-ml-model.ipynb` Jupyter Notebook within VSCode. 
 1. Set the kernel to `ml_venv`. 
 1. Run the notebook by clicking "Run All".
 1. Note: You may be prompted to install the ipykernel package within VSCode. Click "Install".
 
-**Method 2**
+**Method 2 - Jupyter Notebook**
 1. Run the following commands:
     ```bash
     cd Calisthenics-App
