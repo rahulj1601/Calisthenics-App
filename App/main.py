@@ -1,3 +1,4 @@
+# Importing core modules
 from kivy.app import App
 from kivy.lang import Builder
 from kivy.uix.boxlayout import BoxLayout
@@ -16,6 +17,7 @@ import numpy as np
 import os
 import datetime
 
+# Required Kivy and KivyMD UI Imports
 from kivymd.app import MDApp
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.label import MDLabel
@@ -25,20 +27,23 @@ from kivymd.uix.screenmanager import ScreenManager
 from kivy.uix.screenmanager import SlideTransition
 from kivymd.uix.button import MDFillRoundFlatIconButton, MDFlatButton
 from kivymd.uix.filemanager import MDFileManager
-#from kivymd.uix.snackbar import BaseSnackbar
 from kivymd.toast import toast 
 from kivy.metrics import dp
 from kivy.animation import Animation
 
+# Camera4Kivy Import
 from camera4kivy import Preview
 
+# Importing custom Pose, TensorFlowModel and AndroidPermissions classes
 from pose import Pose
 from model import TensorFlowModel
 from android_permissions import AndroidPermissions
 
+# Accessing device storage for Android device
 if platform == "android":
     from android.storage import primary_external_storage_path
 
+# Building the Whole Moible App Layout
 Builder.load_string("""
 <AppLayout>:
     video_preview: self.ids.camera
@@ -242,19 +247,28 @@ Builder.load_string("""
             pos_hint: {"center_x": .30, "center_y": .95}
 """)
 
+# Defining the AppLayout class
+# This creates the real-time video preview screen within the mobile application
 class AppLayout(Screen):
     video_preview = ObjectProperty()
     exercise_form_widget = ObjectProperty()
     recording_widget = ObjectProperty()
     bottom_bar_widget = ObjectProperty()
 
+# This class is responsible for the home screen within the mobile app
 class IntroLayout(Screen):
     pass
 
+# This class controls the file layout screen within the mobile app
+# This is where the user can select a video/image and analyse it
 class FileLayout(Screen):
     file_video_preview = ObjectProperty()
     file_form_widget = ObjectProperty()
 
+# Analysing the given frame
+# Detect a person
+# Classify the form of the selected calisthenics skill
+# Overlay form analysis
 class PoseAnalysis:
 
     def __init__(self, **kwargs):
@@ -272,6 +286,7 @@ class PoseAnalysis:
                         4, 
                         os.path.join(os.getcwd(), 'ML-Models/Handstand/Handstand-Labels.txt'))
 
+        # Defining the pairs of edges between keypoints of the body
         self.edge_pairs = [
             (0, 1),
             (0, 2),
@@ -293,6 +308,7 @@ class PoseAnalysis:
             (14, 16)
         ]
 
+        # Defining RGB colours for different form classes
         self.colour_dict = {
             "Perfect": (0,255,0),
             "Good": (255,255,0),
@@ -300,6 +316,7 @@ class PoseAnalysis:
             "Bad": (255,0,0)
         }
 
+    # Process the given frame to isolate person and detect calisthenics skill form
     def process_frame(self, frame, flip=False):
         
         # Flip Frame (Recorded with Front Facing Camera)
@@ -320,22 +337,14 @@ class PoseAnalysis:
         
         # Pose Classification
         else:
-            '''input_tensor = [[
-                y,x,score
-            ] for y,x,score in person]
-            input_tensor = np.array(input_tensor).flatten().astype(np.float32)
-            input_tensor = np.expand_dims(input_tensor, axis=0)'''
-
             prob_list = self.classifier.classify_pose(input_tensor)
             top_class_name = prob_list[0][0]
-            print(top_class_name)
-
             colour = self.colour_dict[top_class_name]
-
             frame = self.visualize(frame, person, colour, image_width, image_height)
 
         return frame, colour
-
+    
+    # Visualising the person with classified coloured form overlay
     def visualize(self, image, keypoints, colour, image_width, image_height):
         keypoint_threshold = 0.05
         
@@ -353,18 +362,23 @@ class PoseAnalysis:
         
         return image  
 
+# Controls and updates video preview within File Manager layout
 class FileVideoPreview(Image):
 
+    # Initilise current selected pose to Handstand
     current_pose = "Handstand"
 
+    # Icon dictionary with paths to the different icons
     icons = {
         "Handstand": "handstand.png",
         "Front Lever": "front-lever.png",
         "Planche": "planche.png"
     }
 
+    # PoseAnalysis object to analyse the form of the selected video/image
     pose_analyser = PoseAnalysis()
     
+    # Initialisation function - connecting this class to the MDApp class to access those functions 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.current_file = None
@@ -372,24 +386,31 @@ class FileVideoPreview(Image):
         self.rotate = [3, "None"]
         self.texture = Texture.create(size=Window.size, colorfmt='rgb')
     
+    # Play the video when play button is clicked
     def clicked_play(self):
         if self.current_file != None:
             self.start(self.current_file, 60)
     
+    # Start playing the video
     def start(self, file_path, fps):
-        # Check if file is mp4
+        # Check if file is correct format
         if str(file_path[-4:]) == ".mp4" or str(file_path[-4:]) == ".mov" or str(file_path[-4:]) == ".gif" or str(file_path[-4:]) == ".jpg":
             self.current_file = file_path
             self.capture = cv2.VideoCapture(file_path)
             self.event = Clock.schedule_interval(self.update, 1.0 / fps)
 
+    # OpenCV video processing to view the video and load each frame
     def update(self, dt):
         ret, frame = self.capture.read()
         if ret:
+            # Rotate the frame to selected angle (chosen by user)
             if self.rotate[1] != "None":
                 frame = cv2.rotate(frame, self.rotate[1])
+
+            # Process the frame by calling the pose analyser object
             frame, colour = self.pose_analyser.process_frame(frame)
 
+            # Adjusting icon colours and text to keep the user informed with visual aids
             if colour == None:
                 colour = (0,0,0)
                 self.app._file_form.text = "No Person Detected"
@@ -402,6 +423,7 @@ class FileVideoPreview(Image):
                 self.app._file_form.md_bg_color = (colour[0]/255, colour[1]/255, colour[2]/255, 1)
                 self.app._file_form.pos_hint = {"center_x": .20, "center_y": .95}
 
+            # Creating and setting the texture and adding it to the window for the user to see
             buf = cv2.flip(frame, 0).tobytes()
             image_texture = Texture.create(size=(frame.shape[1], frame.shape[0]), colorfmt='rgb')
             image_texture.blit_buffer(buf, colorfmt='rgb', bufferfmt='ubyte')
@@ -411,12 +433,15 @@ class FileVideoPreview(Image):
         if self.app.layout.manager.current != "file_layout":
             Clock.unschedule(self.event)
     
+    # User can change the selected pose
+    # Update the class variables (change recorded pose and classifier)
     def changePose(self, pose):
         self.current_pose = pose
         self.pose_analyser.classifier.load(os.path.join(os.getcwd(), 'ML-Models/' + pose + '/' + pose + '-Classifier.tflite'), 
                     4, 
                     os.path.join(os.getcwd(), 'ML-Models/' + pose + '/' + pose + '-Labels.txt'))
     
+    # Rotate the video
     def rotateFrame(self):
         rotateDict = {
             0: cv2.ROTATE_90_CLOCKWISE,
@@ -427,17 +452,23 @@ class FileVideoPreview(Image):
         key = (self.rotate[0]+1) % 4
         self.rotate = [ key, rotateDict[key] ]
 
+# Displays realtime video preview 
 class VideoPreview(Preview):
+    
+    # Select and initialise the current calisthenics skill to a handstand
     current_pose = "Handstand"
 
+    # Initialise the paths of the different icons
     icons = {
         "Handstand": "handstand.png",
         "Front Lever": "front-lever.png",
         "Planche": "planche.png"
     }
 
+    # Create pose analysis object to analyse the users form
     pose_analyser = PoseAnalysis()
 
+    # Initialisation function to define class variables and access functions within MDApp class
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.analyzed_texture = None
@@ -448,6 +479,7 @@ class VideoPreview(Preview):
         self.recording = False
         self.out = None
 
+    # Get frame input from Camera4Kivy and run pose analysis on it
     def analyze_pixels_callback(self, pixels, image_size, image_pos, scale, mirror):
         frame = np.frombuffer(pixels, np.uint8).reshape(image_size[1], image_size[0], 4)
         frame = frame[:,:,:3]
@@ -462,20 +494,14 @@ class VideoPreview(Preview):
         midpoint_w, midpoint_h = int(frame_w/2), int(frame_h/2)
         frame = cv2.resize(frame, (frame_w, frame_h))
 
-        if self.recording and not self.started_writer and False:
-            date = datetime.datetime.today().strftime("%Y_%m_%d")
-            time = datetime.datetime.now().strftime("%H_%M_%S.%f")
-            file_path = primary_external_storage_path() + '/DCIM/Calisthenics AI' + "/" + date + "/" + time + ".mp4"
-            self.out = cv2.VideoWriter(file_path, cv2.VideoWriter_fourcc(*'MP4V'), 10, (frame_w, frame_h))
-            self.started_writer = True
-
         frame = frame[int(midpoint_h-(window_h/2)) : int(midpoint_h+(window_h/2)), 
                     int(midpoint_w-(window_w/2)) : int(midpoint_w+(window_w/2))]
 
+        # Running pose analysis
         frame, colour = self.pose_analyser.process_frame(frame, self.flip)
 
+        # Setting colours and text of different widgets accordingly
         if colour == None:
-            #Clock.schedule_once(lambda dt: self.showWarning(), 0)
             self.app._exercise_form.text = "No Person Detected"
             self.app._exercise_form.icon = 'alert-circle'
             self.app._exercise_form.md_bg_color = (1, 0, 0, 1)
@@ -486,11 +512,9 @@ class VideoPreview(Preview):
             self.app._exercise_form.md_bg_color = (colour[0]/255, colour[1]/255, colour[2]/255, 1)
             self.app._exercise_form.pos_hint = {"center_x": .20, "center_y": .95}
 
-        if self.recording and self.started_writer and False:
-            self.out.write(frame)
-
         self.make_thread_safe(frame.tobytes(), (frame.shape[1], frame.shape[0]))
-
+    
+    # Updating the texture with the passed in frame bytes in a thread safe manner
     @mainthread
     def make_thread_safe(self, pixels, size):
         if not self.analyzed_texture or\
@@ -500,33 +524,24 @@ class VideoPreview(Preview):
             self.analyzed_texture.flip_vertical()
         self.analyzed_texture.blit_buffer(pixels, colorfmt='rgb', bufferfmt='ubyte') 
 
+    # Set the canvas texture, size and position
     def canvas_instructions_callback(self, texture, tex_size, tex_pos):
         if self.analyzed_texture:
             Rectangle(texture = self.analyzed_texture,
                       size = Window.size, 
                       pos = self.pos)
 
+    # Allow the user to change between different calisthenics exercises
     def changePose(self, pose):
         self.current_pose = pose
         self.pose_analyser.classifier.load(os.path.join(os.getcwd(), 'ML-Models/' + pose + '/' + pose + '-Classifier.tflite'), 
                     4, 
                     os.path.join(os.getcwd(), 'ML-Models/' + pose + '/' + pose + '-Labels.txt'))
-    
-    def showWarning(self):
-        '''snackbar = CustomSnackbar(
-            text="Person Not in Frame",
-            icon="information",
-            snackbar_x="10dp",
-            snackbar_y="10dp",
-            pos_hint = {"center_x": .5, "center_y": .94}
-        )
-        snackbar.size_hint_x = (
-            Window.width - (snackbar.snackbar_x * 2)
-        ) / Window.width
-        snackbar.open()'''
 
+# MDApp Class controls overall build of the mobile app
 class MyApp(MDApp):
 
+    # Initialisation of MDApp class
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         Window.bind(on_keyboard=self.events)
@@ -535,23 +550,27 @@ class MyApp(MDApp):
             exit_manager=self.exit_manager, select_path=self.select_path
         )
 
+    # Building the different pages of the mobile app
+    # Initialising key variables/widgets
     def build(self):
         self.theme_cls.theme_style = "Dark"
         self.theme_cls.material_style = "M2"
         self.title = "Calisthenics AI Personal Trainer"
 
+        # Video Recorder Layout
         self.layout = AppLayout(name = "app_layout")
         self._camera = self.layout.video_preview
         self._exercise_form = self.layout.exercise_form_widget
         self._recording = self.layout.recording_widget
         self._bottom_bar = self.layout.bottom_bar_widget
-
         self.recording = False
 
+        # File Manager Layout
         self.file_manager_layout = FileLayout(name = "file_layout")
         self._file_video_preview = self.file_manager_layout.file_video_preview
         self._file_form = self.file_manager_layout.file_form_widget
 
+        # Initialising the ScreenManager to start on the homepage (Intro Layout)
         sm = ScreenManager(transition = SlideTransition())
         sm.add_widget(IntroLayout(name = "intro_layout"))
         sm.add_widget(self.layout)
@@ -559,12 +578,15 @@ class MyApp(MDApp):
 
         return sm
 
+    # Running key functions on_start of mobile app
     def on_start(self):
         self.dont_gc = AndroidPermissions(self.start_app)
 
+    # Starting the App and sorting out Permissions
     def start_app(self):
         self.dont_gc = None
     
+    # Allowing the user to change between 3 different screens (Video Recording Layout, Home/Intro Layout and File Manager Layout)
     def changeScreen(self, screen_name):
         if screen_name == "app_layout":
             Clock.schedule_once(self.connect_camera)
@@ -585,14 +607,23 @@ class MyApp(MDApp):
 
         self.layout.manager.current = screen_name
 
+    ##############################################
+    ########## Video Recorder Functions ##########
+    ##############################################
+
+    # Establish connection to video camera for App Layout (Video Preview Layout)
     def connect_camera(self, dt):
         self._camera.connect_camera(analyze_pixels_resolution = 640, 
                                    enable_analyze_pixels = True,
                                    default_zoom = 0.0)
 
+    # Stopping/Disconnecting the camera when required
     def on_stop(self):
         self._camera.disconnect_camera()
 
+    # Toggle the video between record and stop recording
+    # Change widget colours
+    # Start/Stop Timer
     def toggle_video(self):
         if self.recording:
             self._camera.stop_capture_video()
@@ -605,7 +636,6 @@ class MyApp(MDApp):
             self.recording = False
             self._camera.recording = False
             self._camera.started_writer = False
-            #self._camera.out.release()
         else:
             self._camera.capture_video()
             self._recording.md_bg_color = (1, 1, 1, 1)
@@ -616,6 +646,7 @@ class MyApp(MDApp):
             self.recording = True
             self._camera.recording = True
     
+    # Update the timer when recording in the Video Recorder Layout
     def update_time(self, dt):
         minutes = int(self._recording.text[0:2])
         seconds = int(self._recording.text[3:5])
@@ -626,41 +657,36 @@ class MyApp(MDApp):
         if self.layout.manager.current != "app_layout":
             self.toggle_video()
 
+    # Toggle between rear and front facing camera
     def switch_camera(self):
         self._camera.select_camera('toggle')
         self._camera.flip=False if self._camera.flip else True
     
-    ##### File Manager Functions
+    ############################################
+    ########## File Manager Functions ##########
+    ############################################
 
+    # Open the select a file menu to choose a video/image (for computer and mobile)
     def file_manager_open(self):
         file_path = os.path.expanduser("~")
         if platform == "android":
             file_path = primary_external_storage_path() + "/DCIM"
-        self.file_manager.show(file_path)  # output manager to the screen
+        self.file_manager.show(file_path)
         self.manager_open = True
 
+    # Allow the user to select a path for the video/image preview
     def select_path(self, path: str):
-        '''
-        It will be called when you click on the file name
-        or the catalog selection button.
-
-        :param path: path to the selected directory or file;
-        '''
-        
         self._file_video_preview.start(path, 60)
-
         self.exit_manager()
         toast(path)
 
+    # Exit the select a file menu
     def exit_manager(self, *args):
-        '''Called when the user reaches the root of the directory tree.'''
-
         self.manager_open = False
         self.file_manager.close()
 
+    # Controls navigation within the select a file menu
     def events(self, instance, keyboard, keycode, text, modifiers):
-        '''Called when buttons are pressed on the mobile device.'''
-
         if keyboard in (1001, 27):
             if self.manager_open:
                 self.file_manager.back()

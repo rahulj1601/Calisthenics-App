@@ -3,8 +3,8 @@ import cv2
 import enum
 from model import TensorFlowModel
 
+# Enum to represent the key BodyParts
 class BodyPart(enum.Enum):
-    """Enum representing human body keypoints detected by pose estimation models."""
     NOSE = 0
     LEFT_EYE = 1
     RIGHT_EYE = 2
@@ -23,12 +23,16 @@ class BodyPart(enum.Enum):
     LEFT_ANKLE = 15
     RIGHT_ANKLE = 16
 
+# This class is used to isolate people from a frame and map out their body parts
+# This is used by the movenet_thunder and movenet_lightning TensorFlow models
+# The detected person is normalised within the frame to apply these TensorFlow models
 class Pose:
 
     MIN_CROP_KEYPOINT_SCORE = 0.2
     TORSO_EXPANSION_RATIO = 1.9
     BODY_EXPANSION_RATIO = 1.2
 
+    # Initialising the class and creating instance of TensorFlowModel to apply movenet_thunder/movenet_lightning
     def __init__(self, model_name):
 
         model_interpreter = TensorFlowModel()
@@ -37,6 +41,7 @@ class Pose:
         self._model_interpreter = model_interpreter
         self.crop_region = None
 
+    # Initialising a crop region
     def init_crop_region(self, image_height, image_width):
         if image_width > image_height:
             x_min = 0.0
@@ -58,6 +63,7 @@ class Pose:
             'width': box_width
         }
 
+    # Isolating the torso from the image
     def torso_visible(self, keypoints):
         left_hip_score = keypoints[BodyPart.LEFT_HIP.value, 2]
         right_hip_score = keypoints[BodyPart.RIGHT_HIP.value, 2]
@@ -72,6 +78,7 @@ class Pose:
         return ((left_hip_visible or right_hip_visible) and
                 (left_shoulder_visible or right_shoulder_visible))
 
+    # Determining torso sizes and distances from torso to key bodyparts
     def determine_torso_and_body_range(self, keypoints, target_keypoints, center_y, center_x):
         torso_joints = [ BodyPart.LEFT_SHOULDER, 
                          BodyPart.RIGHT_SHOULDER, 
@@ -103,6 +110,7 @@ class Pose:
 
         return [max_torso_yrange, max_torso_xrange, max_body_yrange, max_body_xrange]
 
+    # Figuring out area of image to crop and focus on
     def determine_crop_region(self, keypoints, image_height, image_width):
         target_keypoints = {}
         for idx in range(len(BodyPart)):
@@ -133,10 +141,11 @@ class Pose:
             crop_length_half = np.amin(
                 [crop_length_half, np.amax(distances_to_border)])
 
-            # If the body is large enough, there's no need to apply cropping logic.
+            # Cropping is not applied if the person is a large fraction of the image
             if crop_length_half > max(image_width, image_height) / 2:
                 return self.init_crop_region(image_height, image_width)
-            # Calculate the crop region that nicely covers the full body.
+            
+            # Calculate crop region to isolate whole person
             else:
                 crop_length = crop_length_half * 2
             crop_corner = [center_y - crop_length_half,
@@ -163,6 +172,7 @@ class Pose:
         else:
             return self.init_crop_region(image_height, image_width)
 
+    # Crop the image using previously calculated dimensions
     def crop_and_resize(self, image, crop_region, crop_size):
         y_min, x_min, y_max, x_max = [
             crop_region['y_min'], crop_region['x_min'],
@@ -189,6 +199,7 @@ class Pose:
 
         return output_image
 
+    # Detect keypoints within crop region of image and also gather scores for different keypoints
     def run_detector(self, image, crop_region, crop_size):
         input_image = self.crop_and_resize( image, crop_region, crop_size=crop_size )
         input_image = input_image.astype(dtype=np.uint8)
@@ -206,18 +217,16 @@ class Pose:
 
         return keypoints_with_scores
 
+    # Obtain the center point of the left and right parts of the body
     def get_center_point(self, landmarks, left_bodypart, right_bodypart):
         left = landmarks[:, left_bodypart.value]
         right = landmarks[:, right_bodypart.value]
         center = left * 0.5 + right * 0.5
         return center
 
+    # Calculate the largest possible size of the pose
     def get_pose_size(self, landmarks, torso_size_multiplier=2.5):
-        """Calculates pose size.
-        It is the maximum of two values:
-        * Torso size multiplied by `torso_size_multiplier`
-        * Maximum distance from pose center to any pose landmark
-        """
+       
         # Hips center
         hips_center = self.get_center_point(landmarks, BodyPart.LEFT_HIP, BodyPart.RIGHT_HIP)
 
@@ -245,11 +254,9 @@ class Pose:
         pose_size = max(torso_size * torso_size_multiplier, max_dist)
         return pose_size
 
+    # Normalise the pose - move to center (0,0) and scale to constant pose size to match training set of poses
     def normalize_pose_landmarks(self, landmarks):
-        """Normalizes the landmarks translation by moving the pose center to (0,0) and
-        scaling it to a constant pose size.
-        """
-
+        
         # Move landmarks so that the pose center becomes (0,0)
         pose_center = self.get_center_point(landmarks, BodyPart.LEFT_HIP, BodyPart.RIGHT_HIP)
         pose_center = np.expand_dims(pose_center, axis=1)
@@ -264,47 +271,65 @@ class Pose:
 
         return landmarks
 
+    # Convert the landmarks and scores array to a flattened numpy array embedding
     def landmarks_to_embedding(self, landmarks_and_scores):
-        """Converts the input landmarks into a pose embedding."""
-        # Reshape the flat input into a matrix with shape=(17, 3)
+        # Reshape the landmarks_and_scores array into a 17x3 array
         reshaped_inputs = np.reshape(landmarks_and_scores, (17, 3))
 
-        # Normalize landmarks 2D
+        # Extract the first 2 columns (x, y coordinates) from reshaped_inputs, normalize the landmarks using normalize_pose_landmarks() function, and store them in 'landmarks' variable
         landmarks = self.normalize_pose_landmarks(np.array([reshaped_inputs[:, :2]]))
-        
-        # Flatten the normalized landmark coordinates into a vector
+            
+        # Flatten the 'landmarks' array and store it in 'embedding' variable
         embedding = landmarks.flatten()
+        
+        # Return the flattened landmarks array as an embedding
         return embedding
 
+    # Apply normalisation to the person in order to scale and position identical to training set
     def normalize_person(self, keypoints_with_scores):
-        
+        # Rearrange the x, y, score values from keypoints_with_scores array and store them as separate lists in 'landmarks' variable
         landmarks = [[x, y, score] for y, x, score in keypoints_with_scores]
+        
+        # Flatten the 'landmarks' list of lists and store it back in 'landmarks' variable as a single list
         landmarks = [item for sublist in landmarks for item in sublist]
 
+        # Convert the 'landmarks' list into a numpy array and store it in 'landmarks_array' variable
         landmarks_array = np.array(landmarks)
+        
+        # Pass the 'landmarks_array' to landmarks_to_embedding() function to get an embedding, flatten it, and store it in 'embedding' variable
         embedding = self.landmarks_to_embedding(landmarks_array).reshape(34)
 
+        # Flatten the 'embedding' array, convert it to float32 data type, and store it in 'input_tensor' variable
         input_tensor = np.array(embedding).flatten().astype(np.float32)
+        
+        # Add an extra dimension at the beginning of 'input_tensor' array along the first axis and store it back in 'input_tensor' variable
         input_tensor = np.expand_dims(input_tensor, axis=0)
 
+        # Return the input tensor with normalized person keypoints
         return input_tensor
-
+    
+    # Detect the exact coordinates of body parts using movenet
     def detect(self, input_image):
-        
+        # Get the height, width, and number of channels of the input image and store them in respective variables
         image_height, image_width, _ = input_image.shape
 
         if (self.crop_region is None):
+            # If the crop region is not initialized, then call the init_crop_region() function to initialize it with default values based on image height and width
             self.crop_region = self.init_crop_region(image_height, image_width)
 
+        # Call the run_detector() function with input image, crop region, and crop size to get the keypoints with scores
         keypoint_with_scores = self.run_detector(
             input_image,
             self.crop_region,
             crop_size=self._model_interpreter.get_crop_size()
         )
 
+        # Update the crop region using determine_crop_region() function based on the keypoints with scores, image height, and width
         self.crop_region = self.determine_crop_region(keypoint_with_scores,
                                                         image_height, image_width)
 
+        # Call the normalize_person() function with keypoints with scores to get the normalized input tensor
         input_tensor = self.normalize_person(keypoint_with_scores)
 
+        # Return a list containing input tensor, keypoints with scores, image width, and image height as outputs
         return [input_tensor, keypoint_with_scores, image_width, image_height]
