@@ -91,7 +91,8 @@ pip3.9 install --user python-for-android
 cd Calisthenics-App
 python3.9 -m virtualenv ml_venv
 source ml_venv/bin/activate
-pip3.9 install -r app_requirements.txt
+pip3.9 install Cython==0.29.19
+pip3.9 install -r ml_requirements.txt
 ```
 
 > Run the Follwing Commands to Create an `computer_venv` and Install requirements\
@@ -114,6 +115,11 @@ python3.9 -m virtualenv app_venv
 source app_venv/bin/activate
 pip3.9 install Cython==0.29.19
 pip3.9 install -r app_requirements.txt
+```
+
+> Note: If you need to exit a `venv` use the following command
+```bash
+deactivate
 ```
 
 ### Run TensorFlow ML Training Script
