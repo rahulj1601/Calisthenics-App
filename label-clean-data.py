@@ -1,31 +1,28 @@
+#####################################################
+# Classification and Labelling Script               #
+# Manually Classify New Images into Input Folders   #
+#####################################################
+
+# Imported Modules
 from tkinter import *
 import os
-from PIL import Image, ImageTk, ImageSequence
-import time
-
-import tensorflow as tf
-import tensorflow_hub as hub
-from tensorflow_docs.vis import embed
 import cv2
-import pandas as pd
-import numpy as np
-import imageio
-from IPython.display import HTML, display
-
 import imutils
 
+# Importing Movenet Models to see pose overlay
 sys.path.append('TF-Movenet/examples/lite/examples/pose_estimation/raspberry_pi')
-
 from ml import Classifier
 from ml import Movenet
 import utils
 
+# Setting the starting folder path and ending folder path
+# Calling the loopImages function
 def main():
     FOLDER_PATH = "/Users/rahul/Desktop/TODO-Input/Front Lever"
     END_PATH = "/Users/rahul/Documents/Calisthenics-App/Input/Front Lever"
     loopImages(FOLDER_PATH, END_PATH)
 
-# Loop through the images in given folder
+# Loop through the images in selected folder
 def loopImages(folder, path):
     directory = os.fsencode(folder)
     files = os.listdir(directory)
@@ -51,11 +48,13 @@ def loopImages(folder, path):
         cv2.imshow("GUI Image Labelling", pose_img)
         if cv2.waitKey(25) & 0xFF == ord("q"):
                 break
-
+        
+        # Continuously ask the user to select X/P/G/A/B/Exit
+        # This classifies each image and puts into correct folder path or deletes image or exits python script
         while True:
             action = input("X/P/G/A/B/Exit: ").lower()
 
-            # Next Image
+            # Delete and go to Next Image
             if action == "x":
                 os.remove(file_path)
                 break
@@ -104,9 +103,6 @@ def saveImage(file_path, path):
     # Reading the image
     img = cv2.imread(file_path)
 
-    # Resizing image and maintaining aspect ratio
-    #img = image_resize(img, width=500)
-
     # Rotate 2 Degrees
     rotated_left = imutils.rotate(img, angle=2)
     rotated_right = imutils.rotate(img, angle=-2)
@@ -130,37 +126,6 @@ def saveImage(file_path, path):
     cv2.imwrite(path + "/" + str(count) + ".jpeg", mir_rotated_left)
     count+=1
     cv2.imwrite(path + "/" + str(count) + ".jpeg", mir_rotated_right)
-
-def image_resize(image, width = None, height = None, inter = cv2.INTER_AREA):
-    # initialize the dimensions of the image to be resized and
-    # grab the image size
-    dim = None
-    (h, w) = image.shape[:2]
-
-    # if both the width and height are None, then return the
-    # original image
-    if width is None and height is None:
-        return image
-
-    # check to see if the width is None
-    if width is None:
-        # calculate the ratio of the height and construct the
-        # dimensions
-        r = height / float(h)
-        dim = (int(w * r), height)
-
-    # otherwise, the height is None
-    else:
-        # calculate the ratio of the width and construct the
-        # dimensions
-        r = width / float(w)
-        dim = (width, int(h * r))
-
-    # resize the image
-    resized = cv2.resize(image, dim, interpolation = inter)
-
-    # return the resized image
-    return resized
 
 if __name__ == "__main__":
     main()
