@@ -3,7 +3,7 @@
 
 ---
 
-## Description
+## Project Overview
 What does this project do?
 * Track your form for Handstand, Front Lever and Planche.
 * Import previously recorded videos or record in real-time.
@@ -117,7 +117,7 @@ pip3.9 install Cython==0.29.19
 pip3.9 install -r app_requirements.txt
 ```
 
-> Note: If you need to exit a `venv` use the following command
+> Note - If you need to exit a `venv` use the following command:
 ```bash
 deactivate
 ```
@@ -125,10 +125,22 @@ deactivate
 ### Run TensorFlow ML Training Script
 *(Please ensure you have successfully created the `ml_venv` as mentioned above.)*
 
+**Method 1**
 1. Open the `train-ml-model.ipynb` Jupyter Notebook within VSCode. 
 1. Set the kernel to `ml_venv`. 
 1. Run the notebook by clicking "Run All".
 1. Note: You may be prompted to install the ipykernel package within VSCode. Click "Install".
+
+**Method 2**
+1. Run the following commands:
+    ```bash
+    cd Calisthenics-App
+    source ml_venv/bin/activate
+    pip3.9 install jupyter
+    jupyter notebook
+    ```
+1. The Jupyter Notebook will open within your browser. 
+1. Finally, open `train-ml-model.ipynb` and then click `Run All`.
 
 ### Run Application on Computer
 *(This should be possible with any computer including a video-camera, it has been tested to function correctly with a MacBook Pro Intel Core i5 Early 2015.)*
@@ -140,7 +152,7 @@ python main.py
 ```
 
 ### Run Application on Android
-*(The packaging and building of the Android mobile application has been tested on Warwick DCS computers. Theoretically, any Linux computer should suffice. The APK can be installed from any computer onto any Android mobile device. Please note, the `buildozer android debug` command can take a while to run up to 1hr. You can skip the building and packaging steps if you wish, and go straight to installing the APK onto your Android device.)*
+*(The packaging and building of the Android mobile application has been tested on Warwick DCS computers. Theoretically, any Linux computer should suffice. The APK can be installed from any computer onto any Android mobile device. Please note, the `buildozer android debug` command can take a while to run (up to 1hr). You can skip the building and packaging steps if you wish, and go straight to installing the APK file onto your Android device.)*
 
 > Building & packaging the Android mobile application
 
