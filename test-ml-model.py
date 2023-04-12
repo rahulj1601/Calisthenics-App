@@ -161,11 +161,11 @@ def run(classification_model, label_file, estimation_model, video):
 
 # Selecting classifier, label file, movenet model and video to apply classification to
 def main():
-    classifier = "/Users/rahul/Documents/Calisthenics-App/TF-Models/Handstand/Handstand-Classifier.tflite"
-    label_file = "/Users/rahul/Documents/Calisthenics-App/TF-Models/Handstand/Handstand-Labels.txt"
+    classifier = "./TF-Models/Handstand/Handstand-Classifier.tflite"
+    label_file = "./TF-Models/Handstand/Handstand-Labels.txt"
 
     estimation_model = "./TF-Movenet/movenet_lightning.tflite"
-    video = "/Users/rahul/Desktop/Tested-Input/Handstand-Test-Videos/3.mp4"
+    video = "Handstand-Test-Videos/3.mp4"
 
     # Calling the run function to run classification process
     run(classifier, label_file, estimation_model, video)
