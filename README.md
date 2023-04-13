@@ -62,7 +62,8 @@ What does this project do?
 │   │   ├── examples
 │   │   ├── movenet_lightning.tflite
 │   │   ├── movenet_thunder.tflite
-│   ├── requirements.txt
+│   ├── ML-Test-Videos
+│   ├── ml_requirements.txt
 │   ├── label-clean-data.py
 │   ├── test_ml_model.py
 └────── train_ml_model.py
@@ -141,6 +142,24 @@ deactivate
     ```
 1. The Jupyter Notebook will open within your browser. 
 1. Finally, open `train-ml-model.ipynb` and then click `Run All`.
+
+### Run TensorFlow ML Testing Script
+*(Please ensure you have successfully created the `ml_venv` as mentioned above.)*
+
+Run the following commands:
+```bash
+cd Calisthenics-App
+source ml_venv/bin/activate
+python test-ml-model.py
+```
+
+You can change the following paths within the `main()` method:
+```python
+classifier = "./TF-Models/Handstand/Handstand-Classifier.tflite"
+label_file = "./TF-Models/Handstand/Handstand-Labels.txt"
+estimation_model = "./TF-Movenet/movenet_lightning.tflite"
+video = "Handstand-Test-Videos/3.mp4"
+```
 
 ### Run Application on Computer
 *(This should be possible with any computer including a video-camera, it has been tested to function correctly with a MacBook Pro Intel Core i5 Early 2015.)*

@@ -104,6 +104,9 @@ def run(classification_model, label_file, estimation_model, video):
     while cap.isOpened():
         success, frame = cap.read()
 
+        # Exit the loop once the video is finished
+        if frame is None: break
+
         # Flip Frame (uncomment if required)
         # frame = cv2.flip(frame, 1)
 
@@ -129,15 +132,15 @@ def run(classification_model, label_file, estimation_model, video):
         # Pose Classification
         else:
             prob_list = classifier.classify_pose(person_numpy)
-            print(prob_list)
+            # print(prob_list)
 
             top_class_name = prob_list[0].label
-            print(top_class_name)
+            # print(top_class_name)
 
             if top_class_name == "Average":
                 color = (0, 155, 255)
             elif top_class_name == "Good":
-                color = (255, 255, 0)
+                color = (0, 255, 255)
             elif top_class_name == "Bad":
                 color = (0, 0, 255)
             elif top_class_name == "Perfect":
@@ -163,13 +166,21 @@ def run(classification_model, label_file, estimation_model, video):
 def main():
     classifier = "./TF-Models/Handstand/Handstand-Classifier.tflite"
     label_file = "./TF-Models/Handstand/Handstand-Labels.txt"
-
     estimation_model = "./TF-Movenet/movenet_lightning.tflite"
-    video = "Handstand-Test-Videos/3.mp4"
+    video = "./ML-Test-Videos/angled-3.mp4"
+
+    start = time.perf_counter()
 
     # Calling the run function to run classification process
     run(classifier, label_file, estimation_model, video)
 
+    end = time.perf_counter()
+
+    print(f'''
+        ############################
+        TOTAL TIME: {end - start:0.5f} seconds
+        ############################
+    ''')
 
 if __name__ == '__main__':
   main()
